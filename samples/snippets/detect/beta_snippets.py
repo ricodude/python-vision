@@ -139,6 +139,53 @@ def detect_handwritten_ocr(path):
 # [END vision_handwritten_ocr_beta]
 
 
+def detect_handwritten_rs(path):
+    """Detects handwritten characters in a local image.
+
+    Args:
+    path: The path to the local file.
+    """
+    from google.cloud import vision_v1p3beta1 as vision
+    client = vision.ImageAnnotatorClient()
+
+    with io.open(path, 'rb') as image_file:
+        content = image_file.read()
+
+    image = vision.Image(content=content)
+
+    # Language hint codes for handwritten OCR:
+    # en-t-i0-handwrit, mul-Latn-t-i0-handwrit
+    # Note: Use only one language hint code per request for handwritten OCR.
+    image_context = vision.ImageContext(
+        language_hints=['en-t-i0-handwrit'])
+
+    response = client.document_text_detection(image=image,
+                                              image_context=image_context)
+
+    print('Full Text: {}'.format(response.full_text_annotation.text))
+    for page in response.full_text_annotation.pages:
+        for block in page.blocks:
+            print('\nBlock confidence: {}\n'.format(block.confidence))
+
+            for paragraph in block.paragraphs:
+                print('Paragraph confidence: {}'.format(
+                    paragraph.confidence))
+
+                for word in paragraph.words:
+                    word_text = ''.join([
+                        symbol.text for symbol in word.symbols
+                    ])
+                    print('Word text: {} (confidence: {})'.format(
+                        word_text, word.confidence))
+                    print('Bounding box:\n {}'.format(str(word.bounding_box)))
+
+    if response.error.message:
+        raise Exception(
+            '{}\nFor more info on error messages, check: '
+            'https://cloud.google.com/apis/design/errors'.format(
+                response.error.message))
+
+
 # [START vision_handwritten_ocr_gcs_beta]
 def detect_handwritten_ocr_uri(uri):
     """Detects handwritten characters in the file located in Google Cloud
@@ -373,6 +420,10 @@ if __name__ == '__main__':
         'handwritten-ocr', help=detect_handwritten_ocr.__doc__)
     handwritten_parser.add_argument('path')
 
+    handwritten_rs_parser = subparsers.add_parser(
+        'handwritten-rs', help=detect_handwritten_rs.__doc__)
+    handwritten_rs_parser.add_argument('path')
+
     handwritten_uri_parser = subparsers.add_parser(
         'handwritten-ocr-uri', help=detect_handwritten_ocr_uri.__doc__)
     handwritten_uri_parser.add_argument('uri')
@@ -408,5 +459,7 @@ if __name__ == '__main__':
             localize_objects(args.path)
         elif 'handwritten-ocr' in args.command:
             detect_handwritten_ocr(args.path)
+        elif 'handwritten-rs' in args.command:
+            detect_handwritten_rs(args.path)
         elif 'batch-annotate-files' in args.command:
             detect_batch_annotate_files(args.path)

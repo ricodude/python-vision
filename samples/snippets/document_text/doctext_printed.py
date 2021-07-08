@@ -63,11 +63,7 @@ def get_document_bounds(image_file, feature):
 
     image = vision.Image(content=content)
 
-    # RS - added for handwriting
-    image_context = vision.ImageContext(
-        language_hints=['en-t-i0-handwrit'])
-
-    response = client.document_text_detection(image=image, image_context=image_context)
+    response = client.document_text_detection(image=image)
     document = response.full_text_annotation
 
     # Collect specified feature bounds by enumerating all document features
